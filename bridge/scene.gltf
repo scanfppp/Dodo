@@ -1,0 +1,14 @@
+bridge_model.gltf/
+├── scenes/
+│   └── Bridge_Assembly
+├── nodes/
+│   ├── Component_2
+│   ├── Component_3  
+│   ├── Component_4
+│   └── Middle_Support
+├── meshes/
+│   ├── Bridge_Mesh
+│   └── Support_Mesh
+└── materials/
+    ├── Blue_Steel
+    └── Green_Concrete
