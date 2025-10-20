@@ -1,159 +1,8 @@
 <template>
   <div class="bridge-monitoring-container">
-    <!-- 顶部导航栏 -->
-    <header class="app-header">
-      <h1>桥梁三维可视化监测系统</h1>
-    </header>
-    
-    <!-- 功能切换选项卡 -->
-    <div class="tabs-container">
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'monitoring' }"
-        @click="activeTab = 'monitoring'"
-      >
-        状态监测
-      </button>
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'analysis' }"
-        @click="activeTab = 'analysis'"
-      >
-        模态分析
-      </button>
-    </div>
-    
-    <!-- 主内容区域 -->
-    <div class="main-content">
-      <!-- 3D 可视化区域 -->
-      <div ref="container" class="bridge-container"></div>
-        
-      <!-- 动态面板：根据选中的选项卡显示不同内容 -->
-      <div class="panel-container">
-        <!-- 数据监测面板 -->
-        <div v-if="activeTab === 'monitoring'">
-          <div class="monitoring-panel">
-            <h2>桥梁状态监测</h2>
-          
-          <div class="status-indicators">
-            <div class="status-item">
-              <span class="label">整体状态:</span>
-              <span :class="['status-value', bridgeData.status]">
-                {{ getStatusText(bridgeData.status) }}
-              </span>
-            </div>
-            <div class="status-item">
-              <span class="label">温度:</span>
-              <span class="status-value">{{ bridgeData.temperature }}°C</span>
-            </div>
-            <div class="status-item">
-              <span class="label">振动:</span>
-              <span class="status-value">{{ bridgeData.vibration.toFixed(2) }}</span>
-            </div>
-          </div>
-          
-          <!-- 应力点列表已删除 -->
-          
-          <!-- 交互控制 -->
-          <div class="controls-section">
-            <h3>交互控制</h3>
-            <button class="control-btn" @click="toggleLabels">
-              {{ showLabels ? '隐藏标签' : '显示标签' }}
-            </button>
-            <button class="control-btn" @click="resetView">重置视角</button>
-            <!-- 模拟应力变化按钮已删除 -->
-            <button class="control-btn" @click="fetchRealData">
-              获取实时数据
-            </button>
-          </div>
-          </div>
-        </div>
-        
-        <!-- 模态分析面板 -->
-        <div v-if="activeTab === 'analysis'">
-          <div class="analysis-panel">
-            <h2>模态分析</h2>
-          
-          <!-- 模态选择器 -->
-          <div class="modal-selector">
-            <label>选择模态阶数：</label>
-            <select v-model="selectedMode" @change="updateModeVisualization">
-              <option v-for="(mode, index) in modalData.modes" :key="index" :value="index + 1">
-                模态 {{ index + 1 }} ({{ mode.frequency.toFixed(2) }} Hz)
-              </option>
-            </select>
-          </div>
-          
-          <!-- 模态频率表格 -->
-          <div class="modal-table-section">
-            <h3>识别频率</h3>
-            <table class="modal-table">
-              <thead>
-                <tr>
-                  <th>模态阶数</th>
-                  <th>频率 (Hz)</th>
-                  <th>阻尼比 (%)</th>
-                  <th>置信度</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(mode, index) in modalData.modes" :key="index">
-                  <td>模态 {{ index + 1 }}</td>
-                  <td>{{ mode.frequency.toFixed(3) }}</td>
-                  <td>{{ mode.damping.toFixed(2) }}</td>
-                  <td>{{ mode.confidence.toFixed(3) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          
-          <!-- 分区刚度变化 -->
-          <div class="stiffness-section">
-            <h3>各分区刚度及质量变化</h3>
-            <div class="stiffness-chart">
-              <canvas ref="stiffnessCanvas" width="400" height="200"></canvas>
-            </div>
-          </div>
-          
-          <!-- 模态显示缩略图网格 -->
-          <div class="modal-thumbnails-section">
-            <h3>识别模态</h3>
-            <div class="modal-thumbnails-grid">
-              <div 
-                v-for="(mode, index) in modalData.modes" 
-                :key="index" 
-                class="modal-thumbnail"
-                :class="{ active: selectedMode === index + 1 }"
-                @click="selectedMode = index + 1; updateModeVisualization()"
-              >
-                <div class="thumbnail-title">模态 {{ index + 1 }}</div>
-                <div class="thumbnail-frequency">{{ mode.frequency.toFixed(2) }} Hz</div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 模态分析控制 -->
-          <div class="analysis-controls">
-            <button class="control-btn" @click="animateMode">
-              {{ isAnimating ? '停止动画' : '启动模态动画' }}
-            </button>
-            <button class="control-btn" @click="toggleModeDeformation">
-              {{ showModeDeformation ? '隐藏变形' : '显示变形' }}
-            </button>
-            <button class="control-btn" @click="resetModeView">重置模态视角</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 后端连接状态显示 -->
-    <div class="connection-status">
-      <span class="status-label">后端连接:</span>
-      <span :class="['status-indicator', connectionStatus]">
-        {{ connectionStatus === 'connected' ? '已连接' : '未连接' }}
-      </span>
-    </div>
+    <!-- 3D 可视化区域 - 桥梁模型渲染容器 -->
+    <!-- 容器通过ref引用获取DOM元素，用于Three.js场景渲染 -->
+    <div ref="container" class="bridge-container"></div>
   </div>
 </template>
 
@@ -170,7 +19,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 const container = ref(null) // 渲染容器引用
 const stiffnessCanvas = ref(null) // 刚度变化图表画布引用
 let scene, camera, renderer, controls, bridgeGroup // 核心3D对象
-let selectedPart = null // 当前选中的桥梁部件
+// 移除桥梁点击功能，不再需要selectedPart变量
+// 射线检测器，用于鼠标交互
+let raycaster = new THREE.Raycaster()
+// 存储当前悬停的测点球体
+let hoveredSensor = null
+// 数据刷新定时器
+let dataRefreshInterval = null
 
 // 显示标签状态
 const showLabels = ref(false) // 是否显示应力标签
@@ -189,7 +44,7 @@ let modePhase = 0 // 模态振动相位
 let modeDeformationObjects = [] // 存储模态变形可视化对象
 
 // 后端API基础URL
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 /**
  * 桥梁监测数据对象
@@ -203,26 +58,60 @@ const bridgeData = ref({
   temperature: 25,
   vibration: 0.1,
   stressPoints: [
-    { position: { x: -22.5, y: 15, z: 0 }, value: 0.52, name: '左侧支座' },
-    { position: { x: 22.5, y: 15, z: 0 }, value: 0.54, name: '右侧支座' },
-    { position: { x: -45, y: 30, z: 0 }, value: 0.65, name: '左侧桥端' },
-    { position: { x: -33.75, y: 30, z: 0 }, value: 0.62, name: '左侧第一跨' },
-    { position: { x: -11.25, y: 30, z: 0 }, value: 0.58, name: '中间第一跨' },
-    { position: { x: 11.25, y: 30, z: 0 }, value: 0.59, name: '中间第二跨' },
-    { position: { x: 33.75, y: 30, z: 0 }, value: 0.63, name: '右侧第一跨' },
-    { position: { x: 45, y: 30, z: 0 }, value: 0.66, name: '右侧桥端' }
+    // 左侧支座区域 - 5个测点
+    { position: { x: -45, y: 5, z: 10 }, value: 0.52, name: '测点1' },
+    { position: { x: -45, y: 10, z: 0 }, value: 0.53, name: '测点2' },
+    { position: { x: -45, y: 5, z: -10 }, value: 0.51, name: '测点3' },
+    { position: { x: -40, y: 7.5, z: 5 }, value: 0.54, name: '测点4' },
+    { position: { x: -40, y: 7.5, z: -5 }, value: 0.52, name: '测点5' },
+    
+    // 左侧桥跨 - 7个测点
+    { position: { x: -35, y: 30, z: 10 }, value: 0.65, name: '测点6' },
+    { position: { x: -35, y: 30, z: 0 }, value: 0.64, name: '测点7' },
+    { position: { x: -35, y: 30, z: -10 }, value: 0.66, name: '测点8' },
+    { position: { x: -25, y: 30, z: 10 }, value: 0.61, name: '测点9' },
+    { position: { x: -25, y: 30, z: 0 }, value: 0.60, name: '测点10' },
+    { position: { x: -25, y: 30, z: -10 }, value: 0.62, name: '测点11' },
+    { position: { x: -15, y: 30, z: 0 }, value: 0.58, name: '测点12' },
+    
+    // 中间区域 - 6个测点
+    { position: { x: -10, y: 30, z: 10 }, value: 0.57, name: '测点13' },
+    { position: { x: -10, y: 30, z: 0 }, value: 0.58, name: '测点14' },
+    { position: { x: -10, y: 30, z: -10 }, value: 0.56, name: '测点15' },
+    { position: { x: 10, y: 30, z: 10 }, value: 0.59, name: '测点16' },
+    { position: { x: 10, y: 30, z: 0 }, value: 0.58, name: '测点17' },
+    { position: { x: 10, y: 30, z: -10 }, value: 0.60, name: '测点18' },
+    
+    // 右侧桥跨 - 7个测点
+    { position: { x: 15, y: 30, z: 0 }, value: 0.59, name: '测点19' },
+    { position: { x: 25, y: 30, z: 10 }, value: 0.62, name: '测点20' },
+    { position: { x: 25, y: 30, z: 0 }, value: 0.61, name: '测点21' },
+    { position: { x: 25, y: 30, z: -10 }, value: 0.63, name: '测点22' },
+    { position: { x: 35, y: 30, z: 10 }, value: 0.64, name: '测点23' },
+    { position: { x: 35, y: 30, z: 0 }, value: 0.63, name: '测点24' },
+    { position: { x: 35, y: 30, z: -10 }, value: 0.65, name: '测点25' },
+    
+    // 右侧支座区域 - 5个测点
+    { position: { x: 45, y: 5, z: 10 }, value: 0.53, name: '测点26' },
+    { position: { x: 45, y: 10, z: 0 }, value: 0.54, name: '测点27' },
+    { position: { x: 45, y: 5, z: -10 }, value: 0.52, name: '测点28' },
+    { position: { x: 40, y: 7.5, z: 5 }, value: 0.55, name: '测点29' },
+    { position: { x: 40, y: 7.5, z: -5 }, value: 0.53, name: '测点30' }
   ]
 })
 
-// 模态分析数据
+// 模态分析数据 - 存储桥梁模态分析相关的所有数据
 const modalData = ref({
-  modes: [],
-  stiffnessData: [],
-  modeDeformationPatterns: []
+  modes: [], // 模态列表，包含频率、阻尼比等信息
+  stiffnessData: [], // 各分区刚度与质量数据
+  modeDeformationPatterns: [] // 各模态的变形模式数组
 })
 
 /**
  * 从后端API获取模态分析数据
+ * @returns {Promise<boolean>} - 返回数据获取是否成功
+ * @description 异步从后端API请求模态分析数据，包括模态频率、阻尼比、变形模式和刚度数据
+ *              如果API请求失败，将回退到使用默认模态数据
  */
 async function fetchModalData() {
   try {
@@ -256,6 +145,9 @@ async function fetchModalData() {
 
 /**
  * 使用默认模态数据作为后备
+ * @description 当后端API无法获取模态数据时，使用预设的默认数据
+ *              确保即使在离线或API故障情况下，系统仍能展示模态分析功能
+ *              设置了6阶模态的频率、阻尼比、置信度以及对应的变形模式和刚度数据
  */
 function useDefaultModalData() {
   modalData.value.modes = [
@@ -303,12 +195,25 @@ watch(activeTab, async (newTab) => {
       await initModalData();
       updateModeVisualization();
       drawStiffnessChart();
+      // 显示30个传感器测点
+      visualizeStressPoints();
     } catch (error) {
       console.error('初始化模态分析数据失败:', error);
     }
   } else {
     // 切换回监测标签时，清理模态分析对象
     clearModeDeformationObjects();
+    // 清理测点显示
+    if (scene.stressPoints) {
+      scene.stressPoints.forEach(point => scene.remove(point));
+      scene.stressPoints = [];
+    }
+    stressLabels.value.forEach(label => {
+      if (label.element?.parentNode) {
+        label.element.parentNode.removeChild(label.element);
+      }
+    });
+    stressLabels.value = [];
   }
 });
 
@@ -321,7 +226,10 @@ watch(selectedMode, () => {
 
 /**
  * 初始化模态分析数据
- * 为每个模态生成变形点数据
+ * @description 为每个模态生成变形点数据，是模态可视化的核心准备函数
+ *              首先尝试从后端获取模态数据，如果失败则使用默认数据
+ *              然后为每个模态生成沿桥梁均匀分布的变形点，用于3D可视化展示模态变形
+ * @async
  */
 async function initModalData() {
   // 先从后端获取模态数据，如果失败则使用默认数据
@@ -362,39 +270,42 @@ async function initModalData() {
 
 /**
  * 初始化Three.js场景
- * 创建相机、渲染器、光源、控制器，并设置基本环境
+ * @description 场景初始化的核心函数，创建3D可视化所需的所有基础组件
+ *              包括场景对象、相机、渲染器、光源系统、控制器等
+ *              构建了完整的照明系统，包括环境光、主方向光、补光和强调光
+ *              优化了阴影质量，确保模型显示效果逼真
  */
 function initScene() {
-  // 创建场景对象
+  // 创建场景对象 - 3D世界的容器，包含所有可见的3D元素
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0xf0f0f0) // 设置浅灰色背景
+  scene.background = new THREE.Color(0xf0f0f0) // 设置浅灰色背景，提供舒适的视觉体验
   
-  // 配置光源系统
-  // 1. 环境光 - 提供基础照明，消除黑暗区域
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7) // 略微增强环境光强度
+  // 配置光源系统 - 构建多层次照明，确保模型清晰可见且立体感强
+  // 1. 环境光 - 提供全局基础照明，消除完全黑暗的区域
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7) // 0.7的强度提供足够的基础亮度
   scene.add(ambientLight)
   
-  // 2. 主方向光 - 模拟阳光，从左上方照射
-  const mainLight = new THREE.DirectionalLight(0xffffff, 1.5) // 增强主光源强度
-  mainLight.position.set(-80, 120, 60) // 调整位置为左上方
-  mainLight.castShadow = true // 启用阴影
-  // 优化阴影质量
-  mainLight.shadow.mapSize.width = 2048
+  // 2. 主方向光 - 模拟阳光，从左上方照射，提供主要照明和阴影
+  const mainLight = new THREE.DirectionalLight(0xffffff, 1.5) // 较高强度确保主要物体明亮
+  mainLight.position.set(-80, 120, 60) // 左上方45度角位置，提供良好的立体感
+  mainLight.castShadow = true // 启用阴影投射，增强真实感
+  // 优化阴影质量 - 提高阴影分辨率和覆盖范围
+  mainLight.shadow.mapSize.width = 2048 // 较高的分辨率确保阴影清晰
   mainLight.shadow.mapSize.height = 2048
-  mainLight.shadow.camera.top = 150
+  mainLight.shadow.camera.top = 150 // 扩大阴影相机范围，确保整个桥梁都在阴影范围内
   mainLight.shadow.camera.bottom = -150
   mainLight.shadow.camera.left = -150
   mainLight.shadow.camera.right = 150
   scene.add(mainLight)
   
-  // 3. 辅助方向光 - 从右侧补光，减少阴影
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.8)
-  fillLight.position.set(100, 80, -60) // 右侧位置
+  // 3. 辅助方向光 - 从右侧补光，减少主光源造成的强烈阴影
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.8) // 中等强度，平衡光照
+  fillLight.position.set(100, 80, -60) // 右侧位置，与主光源形成对比
   scene.add(fillLight)
   
-  // 4. 底部强调光 - 照亮桥梁底部细节
-  const bottomLight = new THREE.DirectionalLight(0xffffff, 0.5)
-  bottomLight.position.set(0, -50, 0) // 底部位置
+  // 4. 底部强调光 - 照亮桥梁底部细节，防止底部过暗
+  const bottomLight = new THREE.DirectionalLight(0xffffff, 0.5) // 较低强度，仅作为补充
+  bottomLight.position.set(0, -50, 0) // 底部位置，向上照射
   scene.add(bottomLight)
   
   // 5. 添加几个点光源来突出桥梁关键部位
@@ -434,6 +345,11 @@ function initScene() {
   controls.rotateSpeed = 0.5 // 旋转速度
   controls.target.set(0, 0, 0) // 控制器目标点
   
+  // 添加鼠标移动事件监听器
+  if (renderer && renderer.domElement) {
+    renderer.domElement.addEventListener('mousemove', onMouseMove);
+  }
+  
   // 创建地面，降低位置使框架底部显露出来
   const groundGeometry = new THREE.BoxGeometry(300, 1, 300)
   const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 })
@@ -454,7 +370,7 @@ function initScene() {
   
   // 添加事件监听器
   window.addEventListener('resize', onWindowResize) // 窗口大小变化
-  renderer.domElement.addEventListener('click', onBridgeClick) // 点击交互
+  // 移除桥梁点击功能，不再需要onBridgeClick事件监听器
   
   // 初始化模态数据
   initModalData();
@@ -463,6 +379,12 @@ function initScene() {
 /**
  * 创建桥梁模型
  * 构建包含支座和桥面的完整桥梁结构
+ */
+/**
+ * 创建桥梁模型
+ * @description 构建完整的桥梁3D模型，包括左右梯形框架支架、中间支撑柱和桥面
+ *              将所有组件组织到bridgeGroup中，便于统一管理和操作
+ *              是桥梁可视化的核心构建函数
  */
 function createBridge() {
   bridgeGroup = new THREE.Group() // 创建桥梁总组
@@ -766,8 +688,7 @@ function simulateStressChange() {
   // 将桥梁添加到场景
   scene.add(bridgeGroup);
   
-  // 不再创建和显示任何测点
-  bridgeData.value.stressPoints = []; // 清空应力点数据
+    // 注：不再在前端生成测点数据，而是从后端API获取
 }
 
 /**
@@ -785,17 +706,7 @@ function visualizeStressPoints() {
   scene.stressPoints = []
   stressLabels.value = []
   
-  // 完全不显示测点（无论是监测还是分析模式）
-  return;
-  
-  // 确保模态数据已初始化
-  if (!modalData.value.modes || modalData.value.modes.length === 0) {
-    console.log('模态数据尚未初始化，正在初始化...');
-    initModalData().then(() => {
-      console.log('模态数据初始化完成，正在更新可视化...');
-      updateModeVisualization();
-    });
-  }
+  // 移除模式限制，在所有模式下都显示测点
   
   // 创建黑色材质用于测点球体 - 确保所有测点都是黑色的
   const blackMaterial = new THREE.MeshBasicMaterial({ 
@@ -807,57 +718,54 @@ function visualizeStressPoints() {
   
   // 为每个应力点创建可视化对象
   bridgeData.value.stressPoints.forEach(point => {
-    // 创建黑色测点球体 - 确保大小适中且明显可见
-    const sphereGeometry = new THREE.SphereGeometry(0.4, 16, 16);
-    const sphere = new THREE.Mesh(sphereGeometry, blackMaterial);
+    // 创建黑色测点球体 - 确保大小适中且明显可见（放大2倍）
+    const sphereGeometry = new THREE.SphereGeometry(0.8, 16, 16);
+    // 复制黑色材质，以便单独修改每个球体的材质
+    const sphereMaterial = blackMaterial.clone();
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
     sphere.position.set(point.position.x, point.position.y, point.position.z);
+    sphere.userData = { 
+      isSensorPoint: true, 
+      sensorData: point,
+      originalColor: sphereMaterial.color.getHex()
+    };
     
-    // 创建坐标系箭头 - 根据数据值决定方向和长度
-    const stressValue = point.value;
-    const baseArrowLength = 1.5; // 基础箭头长度
-    const arrowLength = Math.abs(stressValue) * baseArrowLength; // 箭头长度与应力值成正比
+    // 创建坐标系箭头 - 表示测量方向，箭头长度随数据值动态变化
+    // 使用点的数据值来动态调整箭头长度，确保最小值为2，最大值为8（放大使指针更明显）
+    const baseArrowLength = 2;
+    const maxArrowLength = 8;
+    const dynamicArrowLength = baseArrowLength + (point.value * (maxArrowLength - baseArrowLength));
     
-    // 根据数据值决定三个坐标轴的方向
-    // X轴方向由应力值的正负决定
-    const xDirection = stressValue >= 0 ? 1 : -1;
-    
-    // Y轴方向根据数据值的大小确定，正值向上，负值向下
-    // 使用应力值的正弦函数分量来确定Y方向分量
-    const yComponent = Math.sin(Math.abs(stressValue) * Math.PI);
-    const yDirection = yComponent >= 0 ? 1 : -1;
-    
-    // Z轴方向根据数据值的大小确定，使用余弦函数分量
-    const zComponent = Math.cos(Math.abs(stressValue) * Math.PI);
-    const zDirection = zComponent >= 0 ? 1 : -1;
-    
-    // 创建X轴箭头（红色）- 根据数据正负决定方向
+    // 对于传感器测点，我们总是显示三个方向的箭头（X轴：顺桥向，Y轴：竖向，Z轴：横向）
+    // X轴箭头（红色）- 顺桥向
     const xArrowHelper = new THREE.ArrowHelper(
-      new THREE.Vector3(xDirection, 0, 0).normalize(), // X轴方向，归一化
+      new THREE.Vector3(1, 0, 0), // 正向
       new THREE.Vector3(point.position.x, point.position.y, point.position.z),
-      arrowLength,
+      dynamicArrowLength,
       0xFF0000, // 红色
-      0.3, // 箭头头部长度
-      0.15 // 箭头头部宽度
+      0.6, // 箭头头部长度（放大使指针更明显）
+      0.3 // 箭头头部宽度（放粗使指针更明显）
     );
     
-    // 创建Y轴箭头（绿色）- 根据数据特征决定方向
+    // Y轴箭头（绿色）- 竖向
     const yArrowHelper = new THREE.ArrowHelper(
-      new THREE.Vector3(0, yDirection, 0).normalize(), // Y轴方向，归一化
+      new THREE.Vector3(0, 1, 0), // 向上
       new THREE.Vector3(point.position.x, point.position.y, point.position.z),
-      arrowLength,
+      dynamicArrowLength,
       0x00FF00, // 绿色
-      0.3,
-      0.15
+      0.6,
+      0.3
     );
     
-    // 创建Z轴箭头（蓝色）- 根据数据特征决定方向
+    // Z轴箭头（蓝色）- 横向
+    const zDirection = point.position.z >= 0 ? 1 : -1; // 根据测点位置决定Z轴方向
     const zArrowHelper = new THREE.ArrowHelper(
-      new THREE.Vector3(0, 0, zDirection).normalize(), // Z轴方向，归一化
+      new THREE.Vector3(0, 0, zDirection), // 指向外侧
       new THREE.Vector3(point.position.x, point.position.y, point.position.z),
-      arrowLength,
+      dynamicArrowLength,
       0x0000FF, // 蓝色
-      0.3,
-      0.15
+      0.6,
+      0.3
     );
     
     // 将对象添加到场景和数组
@@ -909,54 +817,14 @@ function updateModeVisualization() {
  * @param {Object} mode - 当前模态数据
  */
 function createModeDeformationVisualization(mode) {
-  // 增强模态变形效果 - 根据模态阶数调整变形强度
-  const modeIndex = modalData.value.modes.indexOf(mode);
-  const deformationScale = 1 + (modeIndex * 0.5); // 高阶模态变形更大
+  // 不再创建模态分析中的箭头，避免与黑色传感器测点的箭头冲突
+  // 保留黑色传感器测点的动态箭头长度功能
+  // 完全移除模态变形可视化，只显示黑色传感器测点
   
-  // 为每个变形点创建箭头表示变形方向和大小
-  mode.deformationPoints.forEach(point => {
-    // 创建箭头辅助线，增强变形效果
-    const direction = new THREE.Vector3(
-      point.deformation.x * deformationScale,
-      point.deformation.y * deformationScale,
-      point.deformation.z * deformationScale
-    );
-    
-    // 根据模态阶数使用不同的颜色
-    const colors = [0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF];
-    const arrowColor = colors[modeIndex % colors.length];
-    
-    // 创建箭头几何体
-    const arrowHelper = new THREE.ArrowHelper(
-      direction.normalize(),
-      new THREE.Vector3(point.position.x, point.position.y, point.position.z),
-      direction.length() * 4, // 进一步放大变形效果
-      arrowColor,
-      0.6, // 增加箭头头部长度
-      0.4  // 增加箭头头部宽度
-    );
-    
-    // 保存变形对象引用
-    modeDeformationObjects.push(arrowHelper);
-    scene.add(arrowHelper);
-    
-    // 增大变形点球体尺寸，提高可见性
-    const pointGeometry = new THREE.SphereGeometry(1.5, 16, 16);
-    const pointMaterial = new THREE.MeshBasicMaterial({ 
-      color: arrowColor, 
-      transparent: true,
-      opacity: 0.9
-    });
-    const pointSphere = new THREE.Mesh(pointGeometry, pointMaterial);
-    pointSphere.position.set(point.position.x, point.position.y, point.position.z);
-    
-    // 保存变形对象引用
-    modeDeformationObjects.push(pointSphere);
-    scene.add(pointSphere);
-  });
+  // 清空modeDeformationObjects数组，确保没有残留的箭头对象
+  clearModeDeformationObjects();
   
-  // 创建变形线（连接原始点和变形点）
-  createDeformationLines(mode, deformationScale);
+  // 可以在这里添加其他模态分析相关的可视化效果，但不创建箭头
 }
 
 /**
@@ -1233,15 +1101,138 @@ function updateLabelsVisibility() {
   });
   stressLabels.value = [];
   
-  // 不再显示任何测点标签，无论showLabels的值如何
-  return;
+  // 只在模态分析模式下显示标签
+  if (activeTab.value !== 'analysis' || !showLabels.value) {
+    return;
+  }
+  
+  // 确保场景、相机和容器已初始化
+  if (!scene || !camera || !container.value) return;
+  
+  // 为每个应力点创建标签
+  bridgeData.value.stressPoints.forEach((point, index) => {
+    // 创建一个新的div元素作为标签
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'stress-label';
+    labelDiv.textContent = point.name; // 显示测点编号
+    
+    // 设置标签样式
+    Object.assign(labelDiv.style, {
+      position: 'absolute',
+      background: 'rgba(0, 0, 0, 0.8)',
+      color: 'white',
+      padding: '4px 8px',
+      borderRadius: '4px',
+      fontSize: '12px',
+      pointerEvents: 'auto',
+      cursor: 'pointer',
+      zIndex: 1000,
+      transition: 'background-color 0.3s ease'
+    });
+    
+    // 添加鼠标悬停事件监听器，显示详细信息
+    labelDiv.addEventListener('mouseover', (event) => {
+      // 创建tooltip元素
+      const tooltip = document.createElement('div');
+      tooltip.className = 'sensor-tooltip';
+      
+      // 构建详细信息内容
+      const infoContent = `
+        测点编号: ${point.name}<br>
+        ID: ${point.id}<br>
+        坐标: (${point.position.x.toFixed(2)}, ${point.position.y.toFixed(2)}, ${point.position.z.toFixed(2)})<br>
+        传感器类型: ${point.sensorType === 'displacement' ? '位移' : point.sensorType === 'acceleration' ? '加速度' : '未知'}<br>
+        测量方向: ${point.measuredDirections.map(dir => {
+          if (dir === 'x') return '顺桥向(X)';
+          if (dir === 'y') return '竖向(Y)';
+          if (dir === 'z') return '横向(Z)';
+          return dir;
+        }).join(', ')}
+      `;
+      
+      tooltip.innerHTML = infoContent;
+      
+      // 设置tooltip样式
+      Object.assign(tooltip.style, {
+        position: 'absolute',
+        background: 'rgba(0, 0, 0, 0.9)',
+        color: 'white',
+        padding: '8px 12px',
+        borderRadius: '4px',
+        fontSize: '12px',
+        pointerEvents: 'none',
+        zIndex: 1001,
+        whiteSpace: 'nowrap',
+        left: `${event.clientX + 10}px`,
+        top: `${event.clientY - 10}px`
+      });
+      
+      // 添加到body
+      document.body.appendChild(tooltip);
+      
+      // 保存tooltip引用，便于移除
+      labelDiv._tooltip = tooltip;
+      
+      // 改变标签背景色表示悬停状态
+      labelDiv.style.backgroundColor = 'rgba(0, 0, 128, 0.9)';
+    });
+    
+    // 添加鼠标移出事件监听器，移除tooltip
+    labelDiv.addEventListener('mouseout', () => {
+      if (labelDiv._tooltip && labelDiv._tooltip.parentNode) {
+        document.body.removeChild(labelDiv._tooltip);
+        delete labelDiv._tooltip;
+      }
+      
+      // 恢复标签背景色
+      labelDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    });
+    
+    // 移除点击事件监听器，不再需要显示详情
+    
+    // 将标签添加到容器
+    container.value.appendChild(labelDiv);
+    
+    // 保存标签引用
+    stressLabels.value.push({
+      element: labelDiv,
+      point: point
+    });
+    
+    // 计算并设置标签位置
+    const vector = new THREE.Vector3(point.position.x, point.position.y, point.position.z);
+    vector.project(camera);
+    
+    // 确保renderer和domElement存在
+    if (renderer && renderer.domElement) {
+      const canvas = renderer.domElement;
+      const x = (vector.x * 0.5 + 0.5) * canvas.clientWidth;
+      const y = -(vector.y * 0.5 - 0.5) * canvas.clientHeight;
+      
+      labelDiv.style.left = `${x}px`;
+      labelDiv.style.top = `${y}px`;
+    }
+  });
 }
 
 /**
- * 更新桥梁可视化状态
- * 根据数据状态改变桥梁模型的颜色
- * @param {Object} newData - 桥梁状态数据对象
+ * 注：传感器测点详情显示功能已被移除
+ * 不再需要显示传感器测点详情
  */
+
+/**
+ * 更新桥梁可视化状态
+ * @param {Object} newData - 桥梁状态数据对象，包含status等状态信息
+ * @description 根据传入的数据状态动态改变桥梁模型的颜色显示
+ *              遍历所有桥梁组件，根据状态值(normal/warning/danger)设置对应颜色
+ *              特别注意处理多材质情况，确保只修改特定的灰色和蓝色材质
+ *              同时更新应力点可视化
+ * 注：不再在前端生成测点数据，现在从后端API获取完整的30个测点数据
+ */
+// function generateSensorPoints() {
+//   // 已移至后端实现
+// }
+
 function updateBridgeVisualization(newData) {
   // 确保bridgeGroup已初始化
   if (!bridgeGroup) return;
@@ -1301,39 +1292,117 @@ function onWindowResize() {
 }
 
 /**
- * 处理桥梁模型点击事件
- * 实现部件选择高亮和信息提示功能
- * @param {MouseEvent} event - 鼠标点击事件
+ * 处理鼠标移动事件
+ * 使用射线检测识别测点球体的鼠标悬停
  */
-function onBridgeClick(event) {
-  // 创建射线投射器检测点击位置
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
+function onMouseMove(event) {
+  if (!container.value || !camera || !renderer) return;
   
-  // 计算鼠标在归一化设备坐标中的位置 (-1 to +1)
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  // 计算鼠标在归一化设备坐标系中的位置 (-1 到 +1)
+  const containerRect = container.value.getBoundingClientRect();
+  const mouse = new THREE.Vector2(
+    ((event.clientX - containerRect.left) / containerRect.width) * 2 - 1,
+    -((event.clientY - containerRect.top) / containerRect.height) * 2 + 1
+  );
   
-  // 设置射线
+  // 更新射线检测器
   raycaster.setFromCamera(mouse, camera);
   
-  // 检测桥梁部件点击
-  const bridgeIntersects = raycaster.intersectObjects(bridgeGroup.children, true);
-  if (bridgeIntersects.length > 0) {
-    const part = bridgeIntersects[0].object;
-    if (part.userData?.partType) {
-      // 取消之前选中部件的高亮
-      if (selectedPart) selectedPart.material.emissive.set(0x000000);
+  // 获取所有应力点对象
+  const intersects = raycaster.intersectObjects(scene.stressPoints || [], true);
+  
+  // 找到第一个是测点球体的交点
+  let sensorIntersect = null;
+  for (let i = 0; i < intersects.length; i++) {
+    const obj = intersects[i].object;
+    if (obj.userData.isSensorPoint && obj instanceof THREE.Mesh) {
+      sensorIntersect = intersects[i];
+      break;
+    }
+  }
+  
+  // 处理悬停状态变化
+  if (sensorIntersect) {
+    const sensor = sensorIntersect.object;
+    
+    // 如果悬停在新的测点球体上
+    if (hoveredSensor !== sensor) {
+      // 恢复之前悬停球体的颜色
+      if (hoveredSensor) {
+        hoveredSensor.material.color.setHex(hoveredSensor.userData.originalColor);
+      }
       
-      // 高亮当前选中部件
-      part.material.emissive.set(0x555555);
-      selectedPart = part;
+      // 设置新悬停球体的颜色为蓝色
+      sensor.material.color.setHex(0x1976D2);
+      hoveredSensor = sensor;
       
-      // 显示部件信息
-      alert(`点击了${part.userData.partType}\n所属系统: ${getSystemType(part.userData.partType)}`);
+      // 创建tooltip显示测点信息
+      const pointData = sensor.userData.sensorData;
+      const tooltip = document.createElement('div');
+      tooltip.className = 'sensor-tooltip-3d';
+      
+      // 构建详细信息内容
+      const infoContent = `
+        测点编号: ${pointData.name}<br>
+        ID: ${pointData.id}<br>
+        坐标: (${pointData.position.x.toFixed(2)}, ${pointData.position.y.toFixed(2)}, ${pointData.position.z.toFixed(2)})<br>
+        传感器类型: ${pointData.sensorType === 'displacement' ? '位移' : pointData.sensorType === 'acceleration' ? '加速度' : '未知'}<br>
+        测量方向: ${pointData.measuredDirections.map(dir => {
+          if (dir === 'x') return '顺桥向(X)';
+          if (dir === 'y') return '竖向(Y)';
+          if (dir === 'z') return '横向(Z)';
+          return dir;
+        }).join(', ')}
+      `;
+      
+      tooltip.innerHTML = infoContent;
+      
+      // 设置tooltip样式
+      Object.assign(tooltip.style, {
+        position: 'fixed',
+        background: 'rgba(0, 0, 0, 0.9)',
+        color: 'white',
+        padding: '8px 12px',
+        borderRadius: '4px',
+        fontSize: '12px',
+        pointerEvents: 'none',
+        zIndex: 1001,
+        whiteSpace: 'nowrap',
+        left: `${event.clientX + 10}px`,
+        top: `${event.clientY - 10}px`
+      });
+      
+      // 添加到body
+      document.body.appendChild(tooltip);
+      
+      // 保存tooltip引用，便于移除
+      sensorIntersect.object._tooltip = tooltip;
+    } else if (sensor._tooltip) {
+      // 更新已存在tooltip的位置
+      sensor._tooltip.style.left = `${event.clientX + 10}px`;
+      sensor._tooltip.style.top = `${event.clientY - 10}px`;
+    }
+  } else {
+    // 如果不再悬停在任何测点球体上
+    if (hoveredSensor) {
+      // 恢复颜色
+      hoveredSensor.material.color.setHex(hoveredSensor.userData.originalColor);
+      
+      // 移除tooltip
+      if (hoveredSensor._tooltip && hoveredSensor._tooltip.parentNode) {
+        document.body.removeChild(hoveredSensor._tooltip);
+        delete hoveredSensor._tooltip;
+      }
+      
+      hoveredSensor = null;
     }
   }
 }
+
+/**
+ * 注：桥梁点击功能已被移除
+ * 不再需要处理桥梁模型点击事件和部件选择高亮功能
+ */
 
 /**
  * 获取应力值描述文本
@@ -1413,35 +1482,17 @@ function simulateStressChange() {
  * 实际项目中应替换为真实API请求
  */
 function fetchRealData() {
-  fetch('http://localhost:3000/api/bridge-data/latest')
+  fetch(`${API_BASE_URL}/bridge-data/latest`)
     .then(res => res.json())
     .then(data => {
-      // 如果API返回的数据包含应力点，则使用它；否则保持我们的30个测点结构
-      if (data.stressPoints && data.stressPoints.length > 0) {
-        // 如果API返回的测点数量与我们的不一致，保持现有的30个测点结构
-        if (data.stressPoints.length !== 30) {
-          // 只更新数值，保持位置不变
-          bridgeData.value.status = data.status || bridgeData.value.status;
-          bridgeData.value.temperature = data.temperature || bridgeData.value.temperature;
-          bridgeData.value.vibration = data.vibration || bridgeData.value.vibration;
-          
-          // 更新应力值（随机分配API返回的值到我们的30个测点）
-          bridgeData.value.stressPoints.forEach((point, index) => {
-            const apiPointIndex = index % data.stressPoints.length;
-            point.value = data.stressPoints[apiPointIndex].value;
-          });
-        } else {
-          bridgeData.value = data;
-        }
-      } else {
-        // 只更新其他属性，保持测点结构
-        bridgeData.value.status = data.status || bridgeData.value.status;
-        bridgeData.value.temperature = data.temperature || bridgeData.value.temperature;
-        bridgeData.value.vibration = data.vibration || bridgeData.value.vibration;
-      }
+      // 直接使用后端返回的完整数据
+      // 包括30个测点的所有属性：id、position、value、name、sensorType、measuredDirections
+      bridgeData.value = data;
       
       connectionStatus.value = 'connected';
-      // 不再渲染应力点和坐标系箭头
+      
+      // 更新应力点可视化
+      visualizeStressPoints();
     })
     .catch(() => {
       connectionStatus.value = 'disconnected';
@@ -1468,14 +1519,26 @@ function getStressLevel(value) {
 
 /**
  * 组件挂载时初始化场景和设置
+ * @description 组件生命周期钩子，在组件挂载到DOM后执行初始化操作
+ *              负责创建3D场景、启动动画循环、初始化数据获取
+ *              设置定期刷新机制，确保数据实时更新
+ *              是组件启动的核心入口点
  */
 onMounted(() => {
   initScene(); // 初始化3D场景
   animate(); // 启动动画循环
   
+  // 初始获取后端数据并可视化测点
+  fetchRealData();
+  
+  // 定期刷新数据（每3秒），使传感器箭头能动态变化
+  dataRefreshInterval = setInterval(() => {
+    fetchRealData();
+  }, 3000);
+  
   // 定期检查连接状态
   connectionCheckInterval = setInterval(() => {
-    fetch('http://localhost:3000/api/bridge-data')
+    fetch(`${API_BASE_URL}/bridge-data`)
       .then(() => connectionStatus.value = 'connected')
       .catch(() => connectionStatus.value = 'disconnected');
   }, 5000);
@@ -1483,18 +1546,28 @@ onMounted(() => {
 
 /**
  * 组件卸载时清理资源
+ * @description 组件生命周期钩子，在组件从DOM中卸载前执行清理操作
+ *              负责清除所有定时器，防止内存泄漏和无效的异步操作
+ *              移除事件监听器，避免事件处理器在组件卸载后仍被调用
+ *              清理所有DOM标签元素，确保不会在DOM中残留元素
+ *              是保证组件安全卸载和内存管理的关键函数
  */
 onUnmounted(() => {
   // 清理定时器
   if (connectionCheckInterval) {
     clearInterval(connectionCheckInterval);
   }
+  if (dataRefreshInterval) {
+    clearInterval(dataRefreshInterval);
+  }
   
   // 移除事件监听器
   window.removeEventListener('resize', onWindowResize);
-  if (renderer?.domElement) {
-    renderer.domElement.removeEventListener('click', onBridgeClick);
+  // 移除鼠标移动事件监听器
+  if (renderer && renderer.domElement) {
+    renderer.domElement.removeEventListener('mousemove', onMouseMove);
   }
+  // 移除桥梁点击功能，不再需要移除onBridgeClick事件监听器
   
   // 清理标签元素
   stressLabels.value.forEach(label => {
@@ -1902,5 +1975,29 @@ onUnmounted(() => {
 
 .analysis-controls .control-btn:active {
   background-color: #0D47A1;
+}
+/* 适配CombinedAnalysis页面的样式 */
+.bridge-monitoring-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+}
+
+.bridge-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+/* 移除所有多余的样式元素 */
+.app-header,
+.tabs-container,
+.panel-container,
+.connection-status {
+  display: none !important;
 }
 </style>
