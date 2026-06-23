@@ -1,0 +1,94 @@
+server:
+  port: 8888
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+spring:
+  ai:
+    openai:
+      api-key: ${DASHSCOPE_API_KEY:your-api-key-here}
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/
+      chat:
+        options:
+          model: qwen-plus-2025-07-28
+          temperature: 0.7
+#          maxTokens: 5000
+
+      embedding:
+        base-url: https://dashscope.aliyuncs.com/compatible-mode/
+        api-key: ${DASHSCOPE_API_KEY:your-api-key-here}
+        options:
+          model: text-embedding-v4
+          dimmension: 1024
+
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/dodo?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8 # 记得改成你自己的
+    username: root # 记得改成你自己的
+    password: 1234 # 记得改成你自己的
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 连接池配置
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 60000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  # Redis 配置
+  data:
+    redis:
+      host: 127.0.0.1   # 记得改成你自己的
+      port: 6379
+      database: 0
+      timeout: 5s
+      password: 123456
+
+  # MyBatis-Plus 配置
+  mybatis-plus:
+    mapper-locations: classpath*:mapper/*.xml
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+minio:
+  url: http://localhost:9000
+  accessKey: minioadmin
+  secretKey: minioadmin
+  bucketName: rag-test
+  endpoint: http://localhost:9000
+
+embeddings:
+  store:
+    host: 127.0.0.1   # 记得改成你自己的
+    port: 5435   # 记得改成你自己的
+    database: vector_store   # 记得改成你自己的
+    user: pgvector   # 记得改成你自己的
+    password: pgvector   # 记得改成你自己的
+
+# Tavily 搜索引擎配置
+tavily:
+  api-key: ${TAVILY_API_KEY:your-api-key-here}  # 记得改成你自己的
+  mcp-url: https://mcp.tavily.com/mcp/
+
+grsai:
+  nanobanana:
+    api-key: ${GRSAI_API_KEY:your-api-key-here} # 记得改成你自己的
+
+logging:
+  level:
+    org:
+      springframework:
+        ai: INFO
+    io:
+      modelcontextprotocol:
+        client: ERROR
+skills:
+  directory: ${user.home}/.claude/skills  # 记得改成你自己的
+
+ppt:
+  python:
+    script-path: src/main/resources/python/render_ppt.py
